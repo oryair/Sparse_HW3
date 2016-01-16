@@ -1,10 +1,14 @@
 function [mSD, mSD0, vF1, vF2] = Signature_Dictionary_Learninig_Batch(...
-                  signature_size, mTrain, patch_size, cardinality)
+                  vSignature_size, mTrain, vPatch_size, cardinality)
 
-patch_height = patch_size(1);              
-patch_width  = patch_size(2);
+vD_idx = 1 : prod(vSignature_size);
+mD_idx = reshape(vD_idx, vSignature_size);
+mD_idx = im2col(mD_idx, vPatch_size);
               
-mSD      = randn(signature_size);
+patch_height = vPatch_size(1);              
+patch_width  = vPatch_size(2);
+              
+mSD      = randn(vSignature_size);
 mSD0     = mSD;
 D_length = (size(mSD,1) - patch_height + 1)^2;
 
@@ -15,7 +19,8 @@ vF2 = zeros(1, max_iterations);
 for ii = 1 : max_iterations
     
     %% OMP:
-    mD = im2col(mSD, patch_size);
+%     mD = im2col(mSD, vPatch_size);
+    mD = mSD(mD_idx);
     vW = sqrt( sum(mD.^2, 1) );
     mA = bsxfun(@rdivide, mD, vW);
     mG = mA' * mA;
@@ -31,17 +36,18 @@ for ii = 1 : max_iterations
         vP         = find(mX(jj,:));
         mG1        = bsxfun(@times, mR(:,vP), full(mX(jj,vP)));
         mG1        = sum(mG1, 2);
-        [y, x]     = ind2sub(size(mSD) - patch_size + 1, jj);
+        [y, x]     = ind2sub(size(mSD) - vPatch_size + 1, jj);
         vY         = y : y + patch_height - 1;
         vX         = x : x + patch_width - 1;
-        mG1        = reshape(mG1, patch_size);
+        mG1        = reshape(mG1, vPatch_size);
         mSG(vY,vX) = mSG(vY,vX) + mG1;
     end
 
     %% Step Size:
     mu    = .001;
     mSDk  = mSD - mu * mSG;
-    mD    = im2col(mSDk, patch_size );
+%     mD    = im2col(mSDk, vPatch_size );
+    mD    = mSDk(mD_idx);
     mR    = mTrain - mD * mX;
     f_new = sqrt( mean( mean((mR).^2, 1) ) );
     f_old = inf;
@@ -49,7 +55,8 @@ for ii = 1 : max_iterations
         f_old = f_new;
         mu    = 0.9 * mu;
         mSDk  = mSD - mu * mSG;
-        mD    = im2col(mSDk, patch_size);
+%         mD    = im2col(mSDk, vPatch_size);
+        mD    = mSDk(mD_idx);
         mR    = mTrain - mD * mX;
         f_new = sqrt( mean( mean((mR).^2, 1) ) );
     end
